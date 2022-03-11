@@ -19,8 +19,9 @@ from functions import *
 Goal: Enhance constrast and improve visual appearance of video sequence'''
 
 ##----to toggle making Videos----##
-problem_1 = False
-problem_2 = False
+problem_1a = False  #Normal Adaptive Histogram
+problem_1b = False  #CLAHE
+problem_2 = True
 problem_3 = False
 #####################
 
@@ -40,15 +41,16 @@ if (vid.isOpened() == False):
     print('Please check the file name again and file location!')
 
 ###---Values for making videos----##
-if problem_1 == True or problem_2 == True or problem_3 == True:
+if problem_1a == True or problem_1b == True or problem_2 == True or problem_3 == True:
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     fps_out = 3
     print("Making a video...this will take some time...")
 
-if problem_1 == True:
+if problem_1a == True:
     videoname_1=('jpittma1_proj2_problem1_hist')
     out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, (1224, 370))
 
+if problem_1b == True:
     videoname_2=('jpittma1_proj2_problem1_hist_adapt')
     out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, (1224, 370))
 
@@ -69,35 +71,39 @@ while (vid.isOpened()):
         hist, image_hist=conductHistogramEqualization(image)
         # print("hist is ", hist_vals)
         
-        if problem_1 == True:
+        '''Adaptive Histogram Equalization'''
+        print("Conducting Adaptive Histogram Equalization...")
+        #TODO  Adaptive Histogram equalization
+        hist_adapt, hist_adapt_clipped, image_adapt_hist=conductAdaptiveHistogramEqualization(image)
+    
+        
+        '''Make Figures, images, and Figures for Ploblem 1'''
+        if problem_1a == True:
             out1a.write(image_hist)
             print("Frame ",count, "saved")
         
+        if problem_1b == True:
+            out1b.write(image_adapt_hist)
+        
         if count==2:
+            print("Making images and figures based on frame 2...")
+                
             createHistogramFigure(hist, 'histogram_frame2.png')
-            
             hist_compare = np.vstack((image, image_hist))
             # cv2.imshow('hist_compare', hist_compare)
             
             cv2.imwrite("nightDrive_HistCompare_frame2.jpg", hist_compare)
             cv2.imwrite("nightDrive_Hist_frame2.jpg" , image_hist)
             print("Histogram Equalized image saved as 'nightDrive_Hist_frame2.jpg'")
-
-        '''Adaptive Histogram Equalization'''
-        print("Conducting Adaptive Histogram Equalization...")
-        #TODO  Adaptive Histogram equalization
-        hist_adapt, hist_adapt_clipped, image_adapt_hist=conductAdaptiveHistogramEqualization(image)
-        
-        if problem_2 == True:
-            out1b.write(image_adapt_hist)
-        
-        if count==2:
+            
+            ####------CLAHE Figures and Images--------#####
             createHistogramFigure(hist_adapt, 'adaptive_histogram_frame2.png')
             createHistogramFigure(hist_adapt_clipped, 'adaptive_histogram_PostClip_frame2.png') 
             hist_adapt_compare = np.vstack((image, image_hist,image_adapt_hist))
             cv2.imwrite("nightDrive_Hist_adapt_Compare_frame2.jpg", hist_adapt_compare)
             cv2.imwrite("nightDrive_AdaptHist_frame%d.jpg" % count, image_adapt_hist)
             print("Adaptive Histogram Equalized image saved as 'nightDrive_AdaptHist_frame2.jpg'")
+
         
         print("count is ", count)
         # count+=1
@@ -110,7 +116,7 @@ while (vid.isOpened()):
 
 night_drive_video.release()
 vid.release()
-if problem_1 == True:
+if problem_1a == True or problem_1b == True:
     out1a.release()
     out1b.release()
 

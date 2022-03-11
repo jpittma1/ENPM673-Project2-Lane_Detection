@@ -172,35 +172,45 @@ def conductAdaptiveHistogramEqualization(img):
     y_size=8
     windowPixels=x_size*y_size
     
-    x_regions=np.ceil(height/x_size).astype(int)
-    y_regions=np.ceil(width/y_size).astype(int)
-    print("x_regions: ", x_regions, ", y_regions: ", y_regions)
+    x_regions=np.ceil(height/x_size).astype(int)    #47
+    y_regions=np.ceil(width/y_size).astype(int)     #153
+    # print("x_regions: ", x_regions, ", y_regions: ", y_regions)
     
     img_CLAHE=np.zeros(img[:,:,0].shape)
     
     '''Create look-up table (LUT) is used to convert the dynamic range
     of the input image into the desired output dynamic range.'''
   
-    binSize = np.floor(1+(255)/float(nrBins))
+    binSize = np.floor(256/float(nrBins))
+    # print("binSize is: ", binSize)  #1.0
+    
     LUT = np.floor((np.arange(0,256))/float(binSize))
+    # print("LUT is:  ", LUT)
     
     tmp = LUT[img]
+    # print("temp bins from LUT shape is: ", tmp.shape)   #370,1224,3
     
     '''Make Histogram for each window'''
     hist=np.zeros((x_regions, y_regions, nrBins))
+    # print("Hist shape is: ", hist.shape)    #47,153,256
     
-    for i in range(x_regions):
-        for j in range(y_regions):
-            tmp_bin= tmp[i*x_size:(i+1)*x_size, j*y_size: (j+1)*y_size].astype(int)
-            
-            for k in range(x_size):
-                for l in range(y_size):
-                    hist[ i,j, tmp_bin[k,l] ] += 1
+    for i in range(x_regions):  #0->47
+        for j in range(y_regions):   #0->153
+            tmp_bin = tmp[i*x_size:(i+1)*x_size, j*y_size: (j+1)*y_size].astype(int)
+            # print("shape of tmp_bin is: ", tmp_bin.shape)   #8, 8, 3
+            for k in range(x_size):  #0->8
+                for l in range(y_size): #0->8
+                    hist[ i,j, tmp_bin[k,l] ] += 1  #ERROR!!!!
+                    # print("Current histogram is: ", hist[ i,j, tmp_bin[k,l] ])
+                    #TODO: index 2 is out of bounds for axis 0 with size 2
     
     print("Adaptive Histogram, pre-clipped is: ", hist)
     
     '''Clip Histogram'''
     hist_clipped=hist
+    
+    if hist_clipped==hist:
+        print("copy successful!!")
     
     for i in range(x_regions):
         for j in range(y_regions):
@@ -224,21 +234,20 @@ def conductAdaptiveHistogramEqualization(img):
                         hist_clipped[i,j,nr] = clipLimit
                     else: 
                         total_excess -= binIncrease
-                        hist[i,j,nr] += binIncrease
+                        hist_clipped[i,j,nr] += binIncrease
             
             if total_excess > 0:
                 stepSize = max(1,np.floor(1+total_excess/nrBins))
                 for nr in range(nrBins):
                     total_excess -= stepSize
-                    hist[i,j,nr] += stepSize
+                    hist_clipped[i,j,nr] += stepSize
                     if total_excess < 1:
                         break
             
-    
     '''Create map from Histogram for interpolation'''
     map_ = np.zeros((x_regions,y_regions,nrBins))
     #print(map_.shape)
-    scale = 255)/float(windowPixels)
+    scale = 255/float(windowPixels)
     for i in range(x_regions):
         for j in range(y_regions):
             sum_ = 0
@@ -252,48 +261,48 @@ def conductAdaptiveHistogramEqualization(img):
     xI=0    #interpolation X
     for i in range(x_regions+1):
         if i==0:
-        subX = int(x_size/2)
-        xU = 0
-        xB = 0
-    elif i==x_regions:
-        subX = int(x_size/2)
-        xU = x_regions-1
-        xB = x_regions-1
-    else:
-        subX = x_size
-        xU = i-1
-        xB = i
-    
-    yI = 0 #interpolation Y
-    for j in range(y_regions+1):
-        if j==0:
-            subY = int(ysz/2)
-            yL = 0
-            yR = 0
-        elif j==y_regions:
-            subY = int(y_size/2)
-            yL = y_regions-1
-            yR = ny_regions-1
+            subX = int(x_size/2)
+            xU = 0
+            xB = 0
+        elif i==x_regions:
+            subX = int(x_size/2)
+            xU = x_regions-1
+            xB = x_regions-1
         else:
-            subY = y_size
-            yL = j-1
-            yR = j
-        UL = map_[xU,yL,:]
-        UR = map_[xU,yR,:]
-        BL = map_[xB,yL,:]
-        BR = map_[xB,yR,:]
+            subX = x_size
+            xU = i-1
+            xB = i
     
-        print("subX is ", subX)
-        print("subY is ", subY)
+        yI = 0 #interpolation Y
+        for j in range(y_regions+1):
+            if j==0:
+                subY = int(y_size/2)
+                yL = 0
+                yR = 0
+            elif j==y_regions:
+                subY = int(y_size/2)
+                yL = y_regions-1
+                yR = y_regions-1
+            else:
+                subY = y_size
+                yL = j-1
+                yR = j
+            UL = map_[xU,yL,:]
+            UR = map_[xU,yR,:]
+            BL = map_[xB,yL,:]
+            BR = map_[xB,yR,:]
         
-        claheBins=tmp[xI:xI+subX, yI:yI+subY]
-    
-        interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
+            print("subX is ", subX)
+            print("subY is ", subY)
+            
+            claheBins=tmp[xI:xI+subX, yI:yI+subY]
         
-        img_CLAHE[xI:xI+subX, yI:yI+subY] = interpolate_image
-        
-        yI += subY
-    xI += subX
+            interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
+            
+            img_CLAHE[xI:xI+subX, yI:yI+subY] = interpolate_image
+            
+            yI += subY
+        xI += subX
     
     #TODO: Gamma adjust??
     #setting the gamma value, increased values may cause noise
