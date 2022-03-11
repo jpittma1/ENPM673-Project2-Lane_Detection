@@ -20,8 +20,8 @@ Goal: Enhance constrast and improve visual appearance of video sequence'''
 
 ##----to toggle making Videos----##
 problem_1a = False  #Normal Adaptive Histogram
-problem_1b = False  #CLAHE
-problem_2 = True
+problem_1b = True  #CLAHE
+problem_2 = False
 problem_3 = False
 #####################
 
@@ -80,7 +80,7 @@ while (vid.isOpened()):
         '''Make Figures, images, and Figures for Ploblem 1'''
         if problem_1a == True:
             out1a.write(image_hist)
-            print("Frame ",count, "saved")
+            # print("Frame ",count, "saved")
         
         if problem_1b == True:
             out1b.write(image_adapt_hist)

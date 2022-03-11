@@ -162,9 +162,14 @@ def bilinearInterpolation(subBin,LU,RU,LB,RB,subX,subY):
 
 def conductAdaptiveHistogramEqualization(img):
     '''Define Clip value and search window'''
+    # image=img.copy()
+    # img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
     clipLimit=50 #openCV is 40 by default, supposedly
     nrBins=256
-    height,width, _ = img.shape
+    height,width, _ = img.shape #in BGR/HSV
+    # height,width = img.shape    #in grayscale
     
     
     #Search Window size (openCV default is 8x8, supposedly)
@@ -176,7 +181,8 @@ def conductAdaptiveHistogramEqualization(img):
     y_regions=np.ceil(width/y_size).astype(int)     #153
     # print("x_regions: ", x_regions, ", y_regions: ", y_regions)
     
-    img_CLAHE=np.zeros(img[:,:,0].shape)
+    img_CLAHE=np.zeros(img[:,:,0].shape)    #BGR/HSV
+    # img_CLAHE=np.zeros(img[:,:].shape)    #grayscale
     
     '''Create look-up table (LUT) is used to convert the dynamic range
     of the input image into the desired output dynamic range.'''
@@ -201,6 +207,8 @@ def conductAdaptiveHistogramEqualization(img):
             for k in range(x_size):  #0->8
                 for l in range(y_size): #0->8
                     hist[ i,j, tmp_bin[k,l] ] += 1  #ERROR!!!!
+                    # print("temp_bin current is: ", tmp_bin[k,l])
+                    
                     # print("Current histogram is: ", hist[ i,j, tmp_bin[k,l] ])
                     #TODO: index 2 is out of bounds for axis 0 with size 2
     
@@ -316,6 +324,8 @@ def conductAdaptiveHistogramEqualization(img):
     # img2hsv[:,:,2] = cl1
     
     # improved_image = cv2.cvtColor(img2hsv, cv2.COLOR_HSV2BGR)
+    
+    # color = cv2.cvtColor(img_CLAHE, cv2.COLOR_HSV2BGR)
     
     return hist, hist_clipped, img_CLAHE
 
