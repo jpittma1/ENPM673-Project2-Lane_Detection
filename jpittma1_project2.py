@@ -35,13 +35,11 @@ start=1 #start video on frame 1
 vid=cv2.VideoCapture('night_drive.avi')
 
 vid.set(1,start)
-count = 0
 
 if (vid.isOpened() == False):
     print('Please check the file name again and file location!')
 
-
-#---Values for making videos---
+###---Values for making videos----##
 if problem_1 == True or problem_2 == True or problem_3 == True:
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     fps_out = 3
@@ -76,7 +74,7 @@ while (vid.isOpened()):
             print("Frame ",count, "saved")
         
         if count==2:
-            createHistogramFigure(hist)
+            createHistogramFigure(hist, 'histogram_frame2.png')
             
             hist_compare = np.vstack((image, image_hist))
             # cv2.imshow('hist_compare', hist_compare)
@@ -88,17 +86,18 @@ while (vid.isOpened()):
         '''Adaptive Histogram Equalization'''
         print("Conducting Adaptive Histogram Equalization...")
         #TODO  Adaptive Histogram equalization
-        image_adapt_hist=conductAdaptiveHistogramEqualization(image)
+        hist_adapt, hist_adapt_clipped, image_adapt_hist=conductAdaptiveHistogramEqualization(image)
         
         if problem_2 == True:
             out1b.write(image_adapt_hist)
         
-        # if count==2:
+        if count==2:
+            createHistogramFigure(hist_adapt, 'adaptive_histogram_frame2.png')
+            createHistogramFigure(hist_adapt_clipped, 'adaptive_histogram_PostClip_frame2.png') 
             hist_adapt_compare = np.vstack((image, image_hist,image_adapt_hist))
             cv2.imwrite("nightDrive_Hist_adapt_Compare_frame2.jpg", hist_adapt_compare)
-        #     cv2.imwrite("nightDrive_AdaptHist_frame%d.jpg" % count, image_adapt_hist) 
-        
-        # print("Histogram Equalized image saved as 'nightDrive_Hist_frame2.jpg'")
+            cv2.imwrite("nightDrive_AdaptHist_frame%d.jpg" % count, image_adapt_hist)
+            print("Adaptive Histogram Equalized image saved as 'nightDrive_AdaptHist_frame2.jpg'")
         
         print("count is ", count)
         # count+=1

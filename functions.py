@@ -10,7 +10,7 @@ import numpy as np
 import cv2
 import scipy
 from scipy import fft, ifft
-from numpy import linalg as LA
+from numpy import histogram_bin_edges, linalg as LA
 import matplotlib.pyplot as plt
 import sys
 import math
@@ -52,21 +52,11 @@ def convertImagesToMovie(folder):
     
     return video
 
-def createHistogramFigure(img):
-    # a = np.zeros(256, np.int32)
-     
-    # height,width, _ = img.shape
-     
-    # for i in range(width):
-    #     for j in range(height):
-    #         g = img[j,i]
-    #         a[g] = a[g]+1
-            
-    # # print("hist is ", a)
+def createHistogramFigure(val, name):
     
-    plt.hist(a,bins=255)
+    plt.hist(val,bins=255)
     # plt.show()
-    plt.savefig('histogram_frame2.png')
+    plt.savefig(name)
 
 # def conductHistogramEqualization(img,bins):
 #     # bins = np.zeros((256,),dtype=np.float16)
@@ -157,6 +147,168 @@ def conductHistogramEqualization(img):
     cv2.imshow('HSV Equalized',color)
     
     return hist, color
+
+'''To remove artifacts after Adaptive Histogram Equalization'''
+def bilinearInterpolation(subBin,LU,RU,LB,RB,subX,subY):
+    tmp_img = np.zeros(subBin.shape)
+    num = subX*subY
+    for i in range(subX):
+        inverseI = subX-i
+        for j in range(subY):
+            inverseJ = subY-j
+            val = subBin[i,j].astype(int)
+            tmp_img[i,j] = np.floor((inverseI*(inverseJ*LU[val] + j*RU[val])+ i*(inverseJ*LB[val] + j*RB[val]))/float(num))
+    return tmp_img
+
+def conductAdaptiveHistogramEqualization(img):
+    '''Define Clip value and search window'''
+    clipLimit=50 #openCV is 40 by default, supposedly
+    nrBins=256
+    height,width, _ = img.shape
+    
+    
+    #Search Window size (openCV default is 8x8, supposedly)
+    x_size=8
+    y_size=8
+    windowPixels=x_size*y_size
+    
+    x_regions=np.ceil(height/x_size).astype(int)
+    y_regions=np.ceil(width/y_size).astype(int)
+    print("x_regions: ", x_regions, ", y_regions: ", y_regions)
+    
+    img_CLAHE=np.zeros(img[:,:,0].shape)
+    
+    '''Create look-up table (LUT) is used to convert the dynamic range
+    of the input image into the desired output dynamic range.'''
+  
+    binSize = np.floor(1+(255)/float(nrBins))
+    LUT = np.floor((np.arange(0,256))/float(binSize))
+    
+    tmp = LUT[img]
+    
+    '''Make Histogram for each window'''
+    hist=np.zeros((x_regions, y_regions, nrBins))
+    
+    for i in range(x_regions):
+        for j in range(y_regions):
+            tmp_bin= tmp[i*x_size:(i+1)*x_size, j*y_size: (j+1)*y_size].astype(int)
+            
+            for k in range(x_size):
+                for l in range(y_size):
+                    hist[ i,j, tmp_bin[k,l] ] += 1
+    
+    print("Adaptive Histogram, pre-clipped is: ", hist)
+    
+    '''Clip Histogram'''
+    hist_clipped=hist
+    
+    for i in range(x_regions):
+        for j in range(y_regions):
+            total_excess=0
+            
+            for nr in range(nrBins):
+                excess=hist_clipped[i,j,nr]-clipLimit
+                if excess>0:
+                    total_excess += excess
+            
+            '''Distribute clipped pixels uniformly to bins'''
+            binIncrease = total_excess/nrBins
+            new_top = clipLimit - binIncrease
+            
+            for nr in range(nrBins):
+                if hist_clipped[i,j,nr]>clipLimit:
+                    hist_clipped[i,j,nr]=clipLimit
+                else:
+                    if hist_clipped[i,j,nr]>new_top:
+                        total_excess += new_top - hist_clipped[i,j,nr]
+                        hist_clipped[i,j,nr] = clipLimit
+                    else: 
+                        total_excess -= binIncrease
+                        hist[i,j,nr] += binIncrease
+            
+            if total_excess > 0:
+                stepSize = max(1,np.floor(1+total_excess/nrBins))
+                for nr in range(nrBins):
+                    total_excess -= stepSize
+                    hist[i,j,nr] += stepSize
+                    if total_excess < 1:
+                        break
+            
+    
+    '''Create map from Histogram for interpolation'''
+    map_ = np.zeros((x_regions,y_regions,nrBins))
+    #print(map_.shape)
+    scale = 255)/float(windowPixels)
+    for i in range(x_regions):
+        for j in range(y_regions):
+            sum_ = 0
+            for nr in range(nrBins):
+                sum_ += hist[i,j,nr]
+                map_[i,j,nr] = np.floor(min(sum_ * scale,255))
+    
+    '''Bilinear interpolation
+    xU=upper X, yL=left y, yR=right Y, xB=bottom X
+    Moves through the window of pixels updating clahe_image as it goes'''
+    xI=0    #interpolation X
+    for i in range(x_regions+1):
+        if i==0:
+        subX = int(x_size/2)
+        xU = 0
+        xB = 0
+    elif i==x_regions:
+        subX = int(x_size/2)
+        xU = x_regions-1
+        xB = x_regions-1
+    else:
+        subX = x_size
+        xU = i-1
+        xB = i
+    
+    yI = 0 #interpolation Y
+    for j in range(y_regions+1):
+        if j==0:
+            subY = int(ysz/2)
+            yL = 0
+            yR = 0
+        elif j==y_regions:
+            subY = int(y_size/2)
+            yL = y_regions-1
+            yR = ny_regions-1
+        else:
+            subY = y_size
+            yL = j-1
+            yR = j
+        UL = map_[xU,yL,:]
+        UR = map_[xU,yR,:]
+        BL = map_[xB,yL,:]
+        BR = map_[xB,yR,:]
+    
+        print("subX is ", subX)
+        print("subY is ", subY)
+        
+        claheBins=tmp[xI:xI+subX, yI:yI+subY]
+    
+        interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
+        
+        img_CLAHE[xI:xI+subX, yI:yI+subY] = interpolate_image
+        
+        yI += subY
+    xI += subX
+    
+    #TODO: Gamma adjust??
+    #setting the gamma value, increased values may cause noise
+    # gamma = 1.4
+    # def adjust_gamma(image, gamma=1.0):
+    #     invGamma = 1.0 / gamma
+    # table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)])
+    # return cv2.LUT(image.astype(np.uint8), table.astype(np.uint8))
+    # cl1= adjust_gamma(cl1, gamma=gamma)
+    # #adding the last V layer back to the HSV image
+    # img2hsv[:,:,2] = cl1
+    
+    # improved_image = cv2.cvtColor(img2hsv, cv2.COLOR_HSV2BGR)
+    
+    return hist, hist_clipped, img_CLAHE
 
 
 '''Problem 2 Functions'''
