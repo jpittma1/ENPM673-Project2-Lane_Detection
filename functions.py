@@ -48,9 +48,25 @@ def convertImagesToMovie(folder):
         # writing to a image array
         video.write(frames[i])
     
-    # video.release()
+    #convert heightxwidth from 370,1224 to 720x1280 so divisible by 8
+    cap=cv2.VideoCapture(str(videoname)+".avi")
+    size = (640, 480)
+    # size = (1280, 720)
+    video_new = cv2.VideoWriter(str(videoname)+".avi",fourcc, fps, size)
     
-    return video
+    while True:
+        ret,frame_new=cap.read()
+        if ret==True:
+            b=cv2.resize(frame_new,size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
+            video_new.write(b)
+        else:
+            break
+    video_new.release()
+    video.release()
+    cap.release()
+    cv2.destroyAllWindows()
+    
+    return video_new
 
 def createHistogramFigure(val, name):
     
@@ -171,6 +187,7 @@ def conductAdaptiveHistogramEqualization(img):
     height,width, _ = img.shape #in BGR/HSV
     # height,width = img.shape    #in grayscale
     
+    # print("height, width of images are: ", height, " ", width) #370,1224; 480,640
     
     #Search Window size (openCV default is 8x8, supposedly)
     x_size=8
@@ -181,8 +198,10 @@ def conductAdaptiveHistogramEqualization(img):
     y_regions=np.ceil(width/y_size).astype(int)     #153
     # print("x_regions: ", x_regions, ", y_regions: ", y_regions)
     
-    img_CLAHE=np.zeros(img[:,:,0].shape)    #BGR/HSV
+    img_CLAHE=np.zeros(img.shape)    #BGR/HSV
+    # img_CLAHE=np.zeros(img[:,:,0].shape)    #BGR/HSV
     # img_CLAHE=np.zeros(img[:,:].shape)    #grayscale
+    # print("img_CLAHE shape is: ", img_CLAHE.shape)    #480, 640
     
     '''Create look-up table (LUT) is used to convert the dynamic range
     of the input image into the desired output dynamic range.'''
@@ -195,6 +214,7 @@ def conductAdaptiveHistogramEqualization(img):
     
     tmp = LUT[img]
     # print("temp bins from LUT shape is: ", tmp.shape)   #370,1224,3
+    # print("claheBins shape is: ", claheBins.shape)  #4,4,3
     
     '''Make Histogram for each window'''
     hist=np.zeros((x_regions, y_regions, nrBins))
@@ -217,8 +237,8 @@ def conductAdaptiveHistogramEqualization(img):
     '''Clip Histogram'''
     hist_clipped=hist
     
-    if hist_clipped==hist:
-        print("copy successful!!")
+    # if np.array_equal(hist_clipped,hist):
+    #     print("copy successful!!")
     
     for i in range(x_regions):
         for j in range(y_regions):
@@ -300,13 +320,16 @@ def conductAdaptiveHistogramEqualization(img):
             BL = map_[xB,yL,:]
             BR = map_[xB,yR,:]
         
-            print("subX is ", subX)
-            print("subY is ", subY)
+            # print("subX is ", subX)     #4 for 1st iteration
+            # print("subY is ", subY)     #4 for 1st iteration
             
             claheBins=tmp[xI:xI+subX, yI:yI+subY]
-        
-            interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
+            # print("claheBins shape is: ", claheBins.shape)  #4,4,3
             
+            interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
+            # print("interpolate_image shape is: ", interpolate_image.shape) #4,4,3
+            
+            ###ERROR: mismatch of 4,4,3 and 4,4 
             img_CLAHE[xI:xI+subX, yI:yI+subY] = interpolate_image
             
             yI += subY
