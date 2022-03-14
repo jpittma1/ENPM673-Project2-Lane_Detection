@@ -228,9 +228,7 @@ def conductAdaptiveHistogramEqualization(img):
                 for l in range(y_size): #0->8
                     hist[ i,j, tmp_bin[k,l] ] += 1  #ERROR!!!!
                     # print("temp_bin current is: ", tmp_bin[k,l])
-                    
                     # print("Current histogram is: ", hist[ i,j, tmp_bin[k,l] ])
-                    #TODO: index 2 is out of bounds for axis 0 with size 2
     
     print("Adaptive Histogram, pre-clipped is: ", hist)
     
@@ -271,6 +269,8 @@ def conductAdaptiveHistogramEqualization(img):
                     hist_clipped[i,j,nr] += stepSize
                     if total_excess < 1:
                         break
+    
+    print("Adaptive Histogram, clipped is: ", hist_clipped)
             
     '''Create map from Histogram for interpolation'''
     map_ = np.zeros((x_regions,y_regions,nrBins))

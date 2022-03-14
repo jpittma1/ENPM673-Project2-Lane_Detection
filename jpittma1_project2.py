@@ -36,6 +36,7 @@ start=1 #start video on frame 1
 vid=cv2.VideoCapture('night_drive.avi')
 
 vid.set(1,start)
+size = (640, 480)
 
 if (vid.isOpened() == False):
     print('Please check the file name again and file location!')
@@ -48,11 +49,13 @@ if problem_1a == True or problem_1b == True or problem_2 == True or problem_3 ==
 
 if problem_1a == True:
     videoname_1=('jpittma1_proj2_problem1_hist')
-    out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, (1224, 370))
+    out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, size)
+    # out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, (1224, 370))
 
 if problem_1b == True:
     videoname_2=('jpittma1_proj2_problem1_hist_adapt')
-    out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, (1224, 370))
+    out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, size)
+    # out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, (1224, 370))
 
 #Histogram equalization
 count = 0
