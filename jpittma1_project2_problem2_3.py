@@ -51,8 +51,8 @@ while (vid.isOpened()):
     success, image = vid.read()
     
     if success:
-        '''Histogram Equalization'''
-        
+        '''Straight Lane Detection'''
+        print("Commencing Problem 2: Straight Lane Detection...")
 
         
         print("count is ", count)
@@ -63,9 +63,13 @@ while (vid.isOpened()):
     else:
         break
 
+
+print("Completed Problem 2: Straight Lane Detection!!")
 vid.release()
 if problem_2 == True:
     out2.release()
+cv2.destroyAllWindows()
+
 
 '''Problem 3: Predict Turns'''
 vid=cv2.VideoCapture('challenge.mp4')
@@ -78,6 +82,26 @@ if problem_3 == True:
     out3 = cv2.VideoWriter(str(videoname_4)+".avi", fourcc, fps_out, (1920, 1080))
 
 
+count = 0
+while (vid.isOpened()):
+    count+=1
+    success, image = vid.read()
+    
+    if success:
+        '''Predict Turns'''
+        print("Commencing Problem 3: Predict Turns...")
+
+        
+        print("count is ", count)
+        # count+=1
+        
+        # if cv2.waitKey(1) & 0xFF == ord('q'):             
+        #     break
+    else:
+        break
+
+
+print("Completed Problem 3: Predict Turns!!")
 vid.release()
 if problem_3 == True:
     out3.release()
