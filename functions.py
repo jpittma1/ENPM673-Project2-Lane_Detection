@@ -17,9 +17,10 @@ import math
 import os
 from os.path import isfile, join
 
+
 '''Problem 1 Functions'''
 def convertImagesToMovie(folder):
-    fps=3
+    fps =   3
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     videoname=('night_drive')
     frames = []
@@ -48,7 +49,7 @@ def convertImagesToMovie(folder):
         # writing to a image array
         video.write(frames[i])
     
-    #convert heightxwidth from 370,1224 to 720x1280 so divisible by 8
+    #convert heightxwidth from 370,1224 to 480x640so divisible by 8
     cap=cv2.VideoCapture(str(videoname)+".avi")
     size = (640, 480)
     # size = (1280, 720)
@@ -68,60 +69,13 @@ def convertImagesToMovie(folder):
     
     return video_new
 
-def createHistogramFigure(val, name):
+def createHistogramFigure(img, name):
     
-    plt.hist(val,bins=255)
+    plt.hist(img.ravel(),256,[0,256])
     # plt.show()
     plt.savefig(name)
-
-# def conductHistogramEqualization(img,bins):
-#     # bins = np.zeros((256,),dtype=np.float16)
-#     a = bins
-#     b = bins
-#     # a = np.zeros((256,),dtype=np.float16)
-#     # b = np.zeros((256,),dtype=np.float16)
-             
-#     height,width, _ = img.shape
-
-#     #Create histogram
-#     for i in range(width):
-#         for j in range(height):
-#             g = img[j,i]
-#             a[g] = a[g]+1
-
-#     # print("hist is ", a)
+    print("Histogram figure saved as: ", name)
     
-#     '''Cumulative Distibution Function
-#     Number of pixels with intensity less than or equal to "i" intensity
-#     normalized by N pixels'''
-#     #performing histogram equalization
-#     N = 1.0/(height*width)
-
-#     for i in range(256):
-#         for j in range(i+1):
-#             b[i] += a[j] * N;
-#             # print("b[i] before", b[i])
-#         b[i] = round(b[i] * 255);
-#         # print("b[i] after", b[i])
-        
-
-#     # # cum_dist_funct=b
-#     cum_dist_funct=b.astype(np.uint8)
-
-#     # # print("CDF is ", cum_dist_funct)
-
-#     #Equalize Image based on CDF results
-#     for i in range(width):
-#         for j in range(height):
-#             g = img[j,i]
-#             img[j,i]= cum_dist_funct[g]
-     
-#     # cv2.imshow('image',img)
-#     # cv2.waitKey(0)
-    
-#     return img
-    
-
 def createHistogram(input):
     hist_vals = list()
     
@@ -160,197 +114,205 @@ def conductHistogramEqualization(img):
     
     color = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-    cv2.imshow('HSV Equalized',color)
+    # cv2.imshow('HSV Equalized',color)
     
     return hist, color
 
-'''To remove artifacts after Adaptive Histogram Equalization'''
-def bilinearInterpolation(subBin,LU,RU,LB,RB,subX,subY):
-    tmp_img = np.zeros(subBin.shape)
-    num = subX*subY
-    for i in range(subX):
-        inverseI = subX-i
-        for j in range(subY):
-            inverseJ = subY-j
-            val = subBin[i,j].astype(int)
-            tmp_img[i,j] = np.floor((inverseI*(inverseJ*LU[val] + j*RU[val])+ i*(inverseJ*LB[val] + j*RB[val]))/float(num))
-    return tmp_img
 
-def conductAdaptiveHistogramEqualization(img):
-    '''Define Clip value and search window'''
-    # image=img.copy()
-    # img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def conductAdaptiveHistogramEqualization(image):
     # img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # print("img.shape: ",img.shape)
+    # img=image.copy
     
-    clipLimit=50 #openCV is 40 by default, supposedly
+    '''Define Clip value and search window'''
+    clipLimit=0.001 
     nrBins=256
-    height,width, _ = img.shape #in BGR/HSV
-    # height,width = img.shape    #in grayscale
     
-    # print("height, width of images are: ", height, " ", width) #370,1224; 480,640
+    kernel_size = tuple([max(s // 8, 1) for s in image.shape])
+    # kernel_size = tuple([max(s // 8, 1) for s in img.shape])
+    # print("kernel size: ", kernel_size) #60,80, 1
     
-    #Search Window size (openCV default is 8x8, supposedly)
-    x_size=8
-    y_size=8
-    windowPixels=x_size*y_size
+    kernel_size = [int(k) for k in kernel_size]
+    # print("kernel size: ", kernel_size) #60,80, 1
+
+    # grayscaleLevels=7800   #as many grayscale levels as possible; this gave me best results
+    grayscaleLevels=2**14   #as many grayscale levels as possible; this gave me best results
+    # grayscaleLevels=height*width
+    ndim = image.ndim
+    dtype = image.dtype
+
+    # pad the image such that the shape in each dimension
+    # - is a multiple of the kernel_size and
+    # - is preceded by half a kernel size
+    pad_start_per_dim = [k // 2 for k in kernel_size]
+
+    pad_end_per_dim = [(k - s % k) % k + int(np.ceil(k / 2.))
+                       for k, s in zip(kernel_size, image.shape)]
+
+    image = np.pad(image, [[p_i, p_f] for p_i, p_f in
+                           zip(pad_start_per_dim, pad_end_per_dim)],
+                   mode='reflect')
+
+    # determine gray value bins
+    bin_size = 1 + grayscaleLevels // nrBins
+    lut = np.arange(grayscaleLevels, dtype=np.min_scalar_type(grayscaleLevels))
+    lut //= bin_size
+
+    image = lut[image]
+
+    # calculate graylevel mappings for each contextual region
+    # rearrange image into flattened contextual regions
+    ns_hist = [int(s / k) - 1 for s, k in zip(image.shape, kernel_size)]
+    hist_blocks_shape = np.array([ns_hist, kernel_size]).T.flatten()
+    hist_blocks_axis_order = np.array([np.arange(0, ndim * 2, 2),
+                                       np.arange(1, ndim * 2, 2)]).flatten()
     
-    x_regions=np.ceil(height/x_size).astype(int)    #47
-    y_regions=np.ceil(width/y_size).astype(int)     #153
-    # print("x_regions: ", x_regions, ", y_regions: ", y_regions)
+    hist_slices = [slice(k // 2, k // 2 + n * k)
+                   for k, n in zip(kernel_size, ns_hist)]
     
-    img_CLAHE=np.zeros(img.shape)    #BGR/HSV
-    # img_CLAHE=np.zeros(img[:,:,0].shape)    #BGR/HSV
-    # img_CLAHE=np.zeros(img[:,:].shape)    #grayscale
-    # print("img_CLAHE shape is: ", img_CLAHE.shape)    #480, 640
+    hist_blocks = image[tuple(hist_slices)].reshape(hist_blocks_shape)
+    hist_blocks = np.transpose(hist_blocks, axes=hist_blocks_axis_order)
+    hist_block_assembled_shape = hist_blocks.shape
+    hist_blocks = hist_blocks.reshape((np.product(ns_hist), -1))
+
+    # Calculate actual clip limit
+    if clipLimit > 0.0:
+        clim = int(np.clip(clipLimit * np.product(kernel_size), 1, None))
+    else:
+        # largest possible value, i.e., do not clip (AHE)
+        clim = np.product(kernel_size)
+
+    # smallestClip=np.product(kernel_size)
+    # print("smallest clip, ", smallestClip)
+    # print("current clip is ", int(np.clip(clipLimit * np.product(kernel_size), 1, None)))
+    # clim=40 #openCV is 40 by default, supposedly
+    
+    hist = np.apply_along_axis(np.bincount, -1, hist_blocks, minlength=nrBins)
+    
+    #Clip_histogram
+    clipped_hist = np.apply_along_axis(clipHistogram, -1, hist, clip_limit=clim)
     
     '''Create look-up table (LUT) is used to convert the dynamic range
     of the input image into the desired output dynamic range.'''
-  
-    binSize = np.floor(256/float(nrBins))
-    # print("binSize is: ", binSize)  #1.0
+    #Map Histogram
+    hist_map = createLUT(clipped_hist, 0, grayscaleLevels - 1, np.product(kernel_size))
+    hist_map = hist_map.reshape(hist_block_assembled_shape[:ndim] + (-1,))
+
+    # duplicate leading mappings in each dimension
+    map_array = np.pad(hist_map,
+                       [[1, 1] for _ in range(ndim)] + [[0, 0]],
+                       mode='edge')
+
+    '''Perform multilinear interpolation of graylevel mappings'''
+    '''To remove artifacts after Adaptive Histogram Equalization'''
+    # rearrange image into blocks for vectorized processing
+    ns_proc = [int(s / k) for s, k in zip(image.shape, kernel_size)]
+    blocks_shape = np.array([ns_proc, kernel_size]).T.flatten()
+    blocks_axis_order = np.array([np.arange(0, ndim * 2, 2),
+                                  np.arange(1, ndim * 2, 2)]).flatten()
+    blocks = image.reshape(blocks_shape)
+    blocks = np.transpose(blocks, axes=blocks_axis_order)
+    blocks_flattened_shape = blocks.shape
+    blocks = np.reshape(blocks, (np.product(ns_proc),
+                                 np.product(blocks.shape[ndim:])))
+
+    # calculate interpolation coefficients
+    coeffs = np.meshgrid(*tuple([np.arange(k) / k
+                                 for k in kernel_size[::-1]]), indexing='ij')
+    coeffs = [np.transpose(c).flatten() for c in coeffs]
+    inv_coeffs = [1 - c for dim, c in enumerate(coeffs)]
+
+    # sum over contributions of neighboring contextual
+    # regions in each direction
+    result = np.zeros(blocks.shape, dtype=np.float32)
+    for iedge, edge in enumerate(np.ndindex(*([2] * ndim))):
+
+        edge_maps = map_array[tuple([slice(e, e + n)
+                                     for e, n in zip(edge, ns_proc)])]
+        edge_maps = edge_maps.reshape((np.product(ns_proc), -1))
+
+        # apply map
+        edge_mapped = np.take_along_axis(edge_maps, blocks, axis=-1)
+
+        # interpolate
+        edge_coeffs = np.product([[inv_coeffs, coeffs][e][d]
+                                  for d, e in enumerate(edge[::-1])], 0)
+
+        result += (edge_mapped * edge_coeffs).astype(result.dtype)
+
+    result = result.astype(dtype)
+
+    # rebuild result image from blocks
+    result = result.reshape(blocks_flattened_shape)
+    blocks_axis_rebuild_order =\
+        np.array([np.arange(0, ndim),
+                  np.arange(ndim, ndim * 2)]).T.flatten()
+    result = np.transpose(result, axes=blocks_axis_rebuild_order)
+    result = result.reshape(image.shape)
+
+    # undo padding
+    unpad_slices = tuple([slice(p_i, s - p_f) for p_i, p_f, s in
+                          zip(pad_start_per_dim, pad_end_per_dim,
+                              image.shape)])
+    result = result[unpad_slices]
     
-    LUT = np.floor((np.arange(0,256))/float(binSize))
-    # print("LUT is:  ", LUT)
+    # result=(img_CLAHE).astype(np.uint8)
+    # color = cv2.cvtColor(result, cv2.COLOR_HSV2BGR)
     
-    tmp = LUT[img]
-    # print("temp bins from LUT shape is: ", tmp.shape)   #370,1224,3
-    # print("claheBins shape is: ", claheBins.shape)  #4,4,3
-    
-    '''Make Histogram for each window'''
-    hist=np.zeros((x_regions, y_regions, nrBins))
-    # print("Hist shape is: ", hist.shape)    #47,153,256
-    
-    for i in range(x_regions):  #0->47
-        for j in range(y_regions):   #0->153
-            tmp_bin = tmp[i*x_size:(i+1)*x_size, j*y_size: (j+1)*y_size].astype(int)
-            # print("shape of tmp_bin is: ", tmp_bin.shape)   #8, 8, 3
-            for k in range(x_size):  #0->8
-                for l in range(y_size): #0->8
-                    hist[ i,j, tmp_bin[k,l] ] += 1  #ERROR!!!!
-                    # print("temp_bin current is: ", tmp_bin[k,l])
-                    # print("Current histogram is: ", hist[ i,j, tmp_bin[k,l] ])
-    
-    print("Adaptive Histogram, pre-clipped is: ", hist)
-    
-    '''Clip Histogram'''
-    hist_clipped=hist
-    
-    # if np.array_equal(hist_clipped,hist):
-    #     print("copy successful!!")
-    
-    for i in range(x_regions):
-        for j in range(y_regions):
-            total_excess=0
-            
-            for nr in range(nrBins):
-                excess=hist_clipped[i,j,nr]-clipLimit
-                if excess>0:
-                    total_excess += excess
-            
-            '''Distribute clipped pixels uniformly to bins'''
-            binIncrease = total_excess/nrBins
-            new_top = clipLimit - binIncrease
-            
-            for nr in range(nrBins):
-                if hist_clipped[i,j,nr]>clipLimit:
-                    hist_clipped[i,j,nr]=clipLimit
-                else:
-                    if hist_clipped[i,j,nr]>new_top:
-                        total_excess += new_top - hist_clipped[i,j,nr]
-                        hist_clipped[i,j,nr] = clipLimit
-                    else: 
-                        total_excess -= binIncrease
-                        hist_clipped[i,j,nr] += binIncrease
-            
-            if total_excess > 0:
-                stepSize = max(1,np.floor(1+total_excess/nrBins))
-                for nr in range(nrBins):
-                    total_excess -= stepSize
-                    hist_clipped[i,j,nr] += stepSize
-                    if total_excess < 1:
-                        break
-    
-    print("Adaptive Histogram, clipped is: ", hist_clipped)
-            
-    '''Create map from Histogram for interpolation'''
-    map_ = np.zeros((x_regions,y_regions,nrBins))
-    #print(map_.shape)
-    scale = 255/float(windowPixels)
-    for i in range(x_regions):
-        for j in range(y_regions):
-            sum_ = 0
-            for nr in range(nrBins):
-                sum_ += hist[i,j,nr]
-                map_[i,j,nr] = np.floor(min(sum_ * scale,255))
-    
-    '''Bilinear interpolation
-    xU=upper X, yL=left y, yR=right Y, xB=bottom X
-    Moves through the window of pixels updating clahe_image as it goes'''
-    xI=0    #interpolation X
-    for i in range(x_regions+1):
-        if i==0:
-            subX = int(x_size/2)
-            xU = 0
-            xB = 0
-        elif i==x_regions:
-            subX = int(x_size/2)
-            xU = x_regions-1
-            xB = x_regions-1
-        else:
-            subX = x_size
-            xU = i-1
-            xB = i
-    
-        yI = 0 #interpolation Y
-        for j in range(y_regions+1):
-            if j==0:
-                subY = int(y_size/2)
-                yL = 0
-                yR = 0
-            elif j==y_regions:
-                subY = int(y_size/2)
-                yL = y_regions-1
-                yR = y_regions-1
-            else:
-                subY = y_size
-                yL = j-1
-                yR = j
-            UL = map_[xU,yL,:]
-            UR = map_[xU,yR,:]
-            BL = map_[xB,yL,:]
-            BR = map_[xB,yR,:]
-        
-            # print("subX is ", subX)     #4 for 1st iteration
-            # print("subY is ", subY)     #4 for 1st iteration
-            
-            claheBins=tmp[xI:xI+subX, yI:yI+subY]
-            # print("claheBins shape is: ", claheBins.shape)  #4,4,3
-            
-            interpolate_image=bilinearInterpolation(claheBins,UL,UR,BL,BR,subX,subY)
-            # print("interpolate_image shape is: ", interpolate_image.shape) #4,4,3
-            
-            ###ERROR: mismatch of 4,4,3 and 4,4 
-            img_CLAHE[xI:xI+subX, yI:yI+subY] = interpolate_image
-            
-            yI += subY
-        xI += subX
-    
-    #TODO: Gamma adjust??
-    #setting the gamma value, increased values may cause noise
-    # gamma = 1.4
-    # def adjust_gamma(image, gamma=1.0):
-    #     invGamma = 1.0 / gamma
-    # table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)])
-    # return cv2.LUT(image.astype(np.uint8), table.astype(np.uint8))
-    # cl1= adjust_gamma(cl1, gamma=gamma)
-    # #adding the last V layer back to the HSV image
-    # img2hsv[:,:,2] = cl1
-    
-    # improved_image = cv2.cvtColor(img2hsv, cv2.COLOR_HSV2BGR)
-    
-    # color = cv2.cvtColor(img_CLAHE, cv2.COLOR_HSV2BGR)
-    
-    return hist, hist_clipped, img_CLAHE
+    return hist, clipped_hist, result
+    # return hist, clipped_hist, color
+    # return result
+
+def clipHistogram(hist, clip_limit):
+    """Perform clipping of the histogram and redistribution of bins.
+    The histogram is clipped and the number of excess pixels is counted.
+    Afterwards the excess pixels are equally redistributed across the
+    whole histogram
+    """
+    # calculate total number of excess pixels
+    excess_mask = hist > clip_limit
+    excess = hist[excess_mask]
+    n_excess = excess.sum() - excess.size * clip_limit
+    hist[excess_mask] = clip_limit
+
+    # Second part: clip histogram and redistribute excess pixels in each bin
+    bin_incr = n_excess // hist.size  # average binincrement
+    upper = clip_limit - bin_incr  # Bins larger than upper set to cliplimit
+
+    low_mask = hist < upper
+    n_excess -= hist[low_mask].size * bin_incr
+    hist[low_mask] += bin_incr
+
+    mid_mask = np.logical_and(hist >= upper, hist < clip_limit)
+    mid = hist[mid_mask]
+    n_excess += mid.sum() - mid.size * clip_limit
+    hist[mid_mask] = clip_limit
+
+    while n_excess > 0:  # Redistribute remaining excess
+        prev_n_excess = n_excess
+        for index in range(hist.size):
+            under_mask = hist < clip_limit
+            step_size = max(1, np.count_nonzero(under_mask) // n_excess)
+            under_mask = under_mask[index::step_size]
+            hist[index::step_size][under_mask] += 1
+            n_excess -= np.count_nonzero(under_mask)
+            if n_excess <= 0:
+                break
+        if prev_n_excess == n_excess:
+            break
+
+    return hist
+
+def createLUT(histogram, min_value, max_value, pixels):
+    '''Cumulutative sum of histogram bins'''
+    out = np.cumsum(histogram, axis=-1).astype(float)
+    out *= (max_value - min_value) / pixels
+    out += min_value
+    np.clip(out, a_min=None, a_max=max_value, out=out)
+
+    return out.astype(int)
+
 
 
 '''Problem 2 Functions'''

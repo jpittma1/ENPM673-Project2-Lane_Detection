@@ -5,13 +5,12 @@
 #Jerry Pittman, Jr. UID: 117707120
 #jpittma1@umd.edu
 #Project #2
+#Problem #1
 
 #********************************************
 #Requires the following in same folder to run:
 # 1) "functions.py"
 # 2) folder "adaptive_hist_data" with 25 images
-# 3) "whiteline.mp4"
-# 3) "challenge.mp4"
 #********************************************
 from functions import *
 
@@ -21,8 +20,6 @@ Goal: Enhance constrast and improve visual appearance of video sequence'''
 ##----to toggle making Videos----##
 problem_1a = False  #Normal Adaptive Histogram
 problem_1b = True  #CLAHE
-problem_2 = False
-problem_3 = False
 #####################
 
 #---Read images "video sequence"----
@@ -44,7 +41,7 @@ if (vid.isOpened() == False):
 ###---Values for making videos----##
 if problem_1a == True or problem_1b == True or problem_2 == True or problem_3 == True:
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    fps_out = 3
+    fps_out = 3 #Ensure matches night_drive_video!!
     print("Making a video...this will take some time...")
 
 if problem_1a == True:
@@ -73,13 +70,13 @@ while (vid.isOpened()):
         # image_hist=conductHistogramEqualization(image, bins)
         hist, image_hist=conductHistogramEqualization(image)
         # print("hist is ", hist_vals)
+        # print("image_hist shape is: ", image_hist.shape)  #4,4,3
         
         '''Adaptive Histogram Equalization'''
         print("Conducting Adaptive Histogram Equalization...")
         #TODO  Adaptive Histogram equalization
         hist_adapt, hist_adapt_clipped, image_adapt_hist=conductAdaptiveHistogramEqualization(image)
-    
-        
+
         '''Make Figures, images, and Figures for Ploblem 1'''
         if problem_1a == True:
             out1a.write(image_hist)
@@ -90,8 +87,9 @@ while (vid.isOpened()):
         
         if count==2:
             print("Making images and figures based on frame 2...")
-                
-            createHistogramFigure(hist, 'histogram_frame2.png')
+            # print("hist shape is: ", hist.shape)  #no shape for a list...
+
+            createHistogramFigure(image_hist, 'histogram_frame2.png')
             hist_compare = np.vstack((image, image_hist))
             # cv2.imshow('hist_compare', hist_compare)
             
@@ -100,8 +98,11 @@ while (vid.isOpened()):
             print("Histogram Equalized image saved as 'nightDrive_Hist_frame2.jpg'")
             
             ####------CLAHE Figures and Images--------#####
-            createHistogramFigure(hist_adapt, 'adaptive_histogram_frame2.png')
-            createHistogramFigure(hist_adapt_clipped, 'adaptive_histogram_PostClip_frame2.png') 
+            cv2.imshow('image_adapt_hist', image_adapt_hist)
+            # print("hist_adapt shape is: ", hist_adapt.shape)  # (60, 80, 256)
+            # print("hist_adapt_clipped shape is: ", hist_adapt_clipped.shape)  #(60, 80, 256)
+            
+            createHistogramFigure(image_adapt_hist, 'adaptive_histogram_PostClip_frame2.png')
             hist_adapt_compare = np.vstack((image, image_hist,image_adapt_hist))
             cv2.imwrite("nightDrive_Hist_adapt_Compare_frame2.jpg", hist_adapt_compare)
             cv2.imwrite("nightDrive_AdaptHist_frame%d.jpg" % count, image_adapt_hist)
@@ -116,48 +117,10 @@ while (vid.isOpened()):
     else:
         break
     
-
+print("Problem 1: Adaptive Histogram Equalization Complete!!!")
 night_drive_video.release()
 vid.release()
-if problem_1a == True or problem_1b == True:
+if problem_1a == True:
     out1a.release()
+if problem_1b == True:
     out1b.release()
-
-
-'''Problem 2: Straight Lane Detection'''
-#Green for Solid, Red for Dashed
-#---Read the video, save a frame
-thresHold=180
-start=1 #start video on frame 1
-vid=cv2.VideoCapture('whiteline.mp4')
-
-vid.set(1,start)
-count = start
-
-if (vid.isOpened() == False):
-    print('Please check the file name again and file location!')
-
-
-if problem_2 == True:
-    videoname_3=('jpittma1_proj2_problem2')
-    out2 = cv2.VideoWriter(str(videoname_3)+".avi", fourcc, fps_out, (1920, 1080))
-
-vid.release()
-if problem_2 == True:
-    out2.release()
-
-'''Problem 3: Predict Turns'''
-vid=cv2.VideoCapture('challenge.mp4')
-
-vid.set(1,start)
-count = start
-
-if problem_3 == True:
-    videoname_4=('jpittma1_proj2_problem3')
-    out3 = cv2.VideoWriter(str(videoname_4)+".avi", fourcc, fps_out, (1920, 1080))
-
-
-vid.release()
-if problem_3 == True:
-    out3.release()
-cv2.destroyAllWindows()
