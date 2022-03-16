@@ -46,14 +46,39 @@ if problem_2 == True:
     out2 = cv2.VideoWriter(str(videoname_3)+".avi", fourcc, fps_out, (1920, 1080))
     
 count = 0
+print("Commencing Problem 2: Straight Lane Detection...")
 while (vid.isOpened()):
     count+=1
     success, image = vid.read()
     
     if success:
         '''Straight Lane Detection'''
-        print("Commencing Problem 2: Straight Lane Detection...")
+        # print("Commencing Problem 2: Straight Lane Detection...")
 
+        '''Convert to grayscale'''
+        grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        blur= cv2.GaussianBlur(grey, (5,5), 0)
+        
+        '''Reduce Noise'''
+        
+        '''Detect edges using canny'''
+        edges=cv2.Canny(blur, 100,200)
+        
+        if count==2:
+            plt.imshow(edges)
+            plt.savefig("edges.png")
+        
+        img_plus_edges=image.copy()
+        
+        if problem_2 == True:
+            out2.write(img_plus_edges)
+        
+        '''Apply canny mask to image'''
+        
+        '''Find coordinates of lane edges'''
+        
+        '''Fit coordinates into canny image and color'''
+        #Green for Solid, Red for Dashed
         
         print("count is ", count)
         # count+=1
@@ -106,3 +131,4 @@ vid.release()
 if problem_3 == True:
     out3.release()
 cv2.destroyAllWindows()
+plt.close('all')
