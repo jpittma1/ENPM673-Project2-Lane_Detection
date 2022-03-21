@@ -314,8 +314,30 @@ def createLUT(histogram, min_value, max_value, pixels):
     return out.astype(int)
 
 
-
-'''Problem 2 Functions'''
-
-
 '''Problem 3 Functions'''
+#  def solveHomographyAndWarp(img):
+     
+#      return new_img
+ 
+###--Solves for histogram and max of each column/lane---###
+def histogram(img):
+    
+    hist_vals = list()
+    index = list()
+
+    for i in range(img.shape[1]):
+        z = np.where(img[:,i] > 0)
+        hist_vals.append(len(z[0]))
+        index.append(i)
+        
+    tmp_1 = hist_vals[:120]
+    tmp_2 = hist_vals[120:]
+    max1 = max(tmp_1)
+    max2 = max(tmp_2)
+    col1 = hist_vals.index(max1)
+    col2 = hist_vals.index(max2)
+
+    bins=200
+    plt.plot(index,hist_vals, bins)
+    plt.show()
+    return col1, col2
