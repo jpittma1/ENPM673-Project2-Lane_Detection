@@ -19,7 +19,7 @@ NOTE: "functions.py" is only needed/used for problems 1 and 3
 # Function modules used: numpy, cv2, scipy, matplotlib.pyplot, sys, math
 
 # In order to generate videos will need to "toggle" the applicable variable from "False" to "True".
-These are located in "jpittma1_project2.py" on lines 21-22
+These are located in "jpittma1_project2_problem1.py" on lines 21-22
 Problem 1a: problem_1a
 Problem 1b: problem_1b
 
