@@ -15,9 +15,9 @@
 from functions import *
 
 ##----to toggle making Videos----##
-problem_2 = False
-problem_3 = False
-#####################
+problem_2 = False   #Straight Lane Detection
+problem_3 = False   #Turn Detection
+##################################
 
 
 ###---Values for making videos----##
@@ -25,7 +25,6 @@ if problem_2 == True or problem_3 == True:
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     fps_out = 3 #Ensure matches night_drive_video!!
     print("Making a video...this will take some time...")
-
 
 '''Problem 2: Straight Lane Detection'''
 #Green for Solid, Red for Dashed
@@ -56,7 +55,6 @@ while (vid.isOpened()):
     count+=1
     success, image = vid.read()
 
-    
     if success:
         '''Straight Lane Detection'''
         # print("Commencing Problem 2: Straight Lane Detection...")
@@ -146,14 +144,12 @@ while (vid.isOpened()):
     else:
         break
 
-
 print("Completed Problem 2: Straight Lane Detection!!")
 vid.release()
 if problem_2 == True:
     out2.release()
 cv2.destroyAllWindows()
 plt.close('all')
-
 
 '''Problem 3: Predict Turns'''
 print("Commencing Problem 3: Predict Turns...")
@@ -192,8 +188,6 @@ while (vid.isOpened()):
         '''Convert to HLS format 
         (R, G, and B are converted to the floats and scaled to fit the 0 to 1 range.'''
         img_hls=cv2.cvtColor(warp, cv2.COLOR_BGR2HLS)
-        # img_hls=cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
-        # img_hls=cv2.cvtColor(crop_bottom, cv2.COLOR_BGR2HLS)
         
         '''Create masks for yellow and white lane markings'''
         yellowLow = np.array([15, 100, 20])
@@ -210,8 +204,6 @@ while (vid.isOpened()):
         comb_hls = cv2.bitwise_or(white_hls,yellow_hls)
         
         '''Histogram of Intensities'''
-        #Lane_l is left lane values, lane_r is right lane values
-        # lane_l,lane_r,ind,vals, b = histogram(comb_hls)
         lane_l,lane_r = histogram(comb_hls)
         
         
@@ -229,8 +221,6 @@ while (vid.isOpened()):
         poly_points, left_pts, right_pts = solvePolygon(coeff_left, coeff_right)
         
         '''Plotting the polygon on image'''
-        # cv2.fillPoly(crop_bottom, [poly_points], (50, 205, 50))
-        # cv2.fillPoly(crop_bottom, [poly_points], (100, 120, 50))    #green
         cv2.fillPoly(warp, [poly_points], (100, 120, 50))    #green
         
         
@@ -257,7 +247,6 @@ while (vid.isOpened()):
         img_final=recombine.copy()
         
         '''Predict Direction'''
-        # curveRadius=solveRadiusOfCurve(coeff_left,coeff_right, left_pts, right_pts)
         curveRadius = ((1+((2*coeff_right[0]*right_pts[50][1])+coeff_right[1])**2)**(3/2))/abs(2*coeff_right[0])
         
         img_center=int(warp.shape[1]/2)
@@ -290,19 +279,8 @@ while (vid.isOpened()):
             
             plt.imshow(img_final)
             plt.savefig("prob3_final_result.png")
-            
-            # plt.imshow(edges)
-            # plt.savefig("edges.png")
-            # plt.imshow(img_crop)
-            # plt.savefig("img_crop.png")
-            # plt.imshow(image)
-            # plt.savefig("img_colored.png")
-            
-            # plt.imshow(edges_color)
-            # plt.savefig("img_edges_colored.png")
         
         # print("count is ", count)
-    
     
         if problem_3 == True:
                 out3.write(img_final)

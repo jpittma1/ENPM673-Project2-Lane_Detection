@@ -20,13 +20,13 @@ Goal: Enhance constrast and improve visual appearance of video sequence'''
 ##----to toggle making Videos----##
 problem_1a = False  #Normal Adaptive Histogram
 problem_1b = True  #CLAHE
-#####################
+###################################
 
 #---Read images "video sequence"----
 path = './adaptive_hist_data/'
 print("Converting provided images into a video...")
 night_drive_video=convertImagesToMovie(path)
-# night_drive_video.release()
+
 
 thresHold=180
 start=1 #start video on frame 1
@@ -47,12 +47,10 @@ if problem_1a == True or problem_1b == True or problem_2 == True or problem_3 ==
 if problem_1a == True:
     videoname_1=('jpittma1_proj2_problem1_hist')
     out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, size)
-    # out1a = cv2.VideoWriter(str(videoname_1)+".avi", fourcc, fps_out, (1224, 370))
 
 if problem_1b == True:
     videoname_2=('jpittma1_proj2_problem1_hist_adapt')
     out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, size)
-    # out1b = cv2.VideoWriter(str(videoname_2)+".avi", fourcc, fps_out, (1224, 370))
 
 #Histogram equalization
 count = 0
@@ -64,10 +62,8 @@ while (vid.isOpened()):
         '''Histogram Equalization'''
         print("Conducting Histogram Equalization...")
 
-        # bins = np.zeros(256)
         bins = np.zeros((256,),dtype=np.float16)
   
-        # image_hist=conductHistogramEqualization(image, bins)
         hist, image_hist=conductHistogramEqualization(image)
         # print("hist is ", hist_vals)
         # print("image_hist shape is: ", image_hist.shape)  #4,4,3

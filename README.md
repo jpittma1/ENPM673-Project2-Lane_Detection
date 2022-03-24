@@ -9,7 +9,7 @@ PMRO Program at UMD-CP Spring 2022
 
 #********************************************
 # Requires the following in same folder to run:
-# 1) Python code: "functions.py" and "jpittma1_project2.py" and "jpittma1_project2_problem2_3.py"
+# 1) Python code: "functions.py", "jpittma1_project2_problem1.py" and "jpittma1_project2_problem2_3.py"
 # 2) folder "adaptive_hist_data" with 25 images
 # 3) "whiteline.mp4" for problem 2
 # 4) "challenge.mp4" for problem 3
