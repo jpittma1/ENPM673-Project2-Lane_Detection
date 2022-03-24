@@ -13,6 +13,7 @@ PMRO Program at UMD-CP Spring 2022
 # 2) folder "adaptive_hist_data" with 25 images
 # 3) "whiteline.mp4" for problem 2
 # 4) "challenge.mp4" for problem 3
+NOTE: "functions.py" is only needed/used for problems 1 and 3
 #********************************************
 
 # Function modules used: numpy, cv2, scipy, matplotlib.pyplot, sys, math

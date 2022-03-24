@@ -12,8 +12,6 @@
 # 2) "whiteline.mp4"
 # 3) "challenge.mp4"
 #********************************************
-from tkinter.ttk import Frame
-from cv2 import COLOR_GRAY2BGR
 from functions import *
 
 ##----to toggle making Videos----##
@@ -142,14 +140,9 @@ while (vid.isOpened()):
         if problem_2 == True:
             out2.write(img_plus_edges)
         
-        
-        
-        
+
         # print("count is ", count)
-        # count+=1
-        
-        # if cv2.waitKey(1) & 0xFF == ord('q'):             
-        #     break
+
     else:
         break
 
@@ -182,23 +175,25 @@ while (vid.isOpened()):
     success, frame = vid.read()
     
     if success:
-        ####----Pre-processing----
+        ####----Pre-processing----####
         '''Blur (Remove Noise) Image'''
         blur=cv2.medianBlur(frame, 5)
         
         '''Crop Image'''
+        #720 height so split in half
         crop_bottom=blur[360:,:]
         crop_top=blur[:360,:]
         
         # recombine = np.concatenate((crop_top,crop_bottom), axis = 0)
         
-        '''Find Homography and Warp??'''
-        # warp=solveHomographyAndWarp(crop_bottom)
+        '''Find Homography and Warp'''
+        warp=solveHomographyAndWarp(crop_bottom)
         
         '''Convert to HLS format 
         (R, G, and B are converted to the floats and scaled to fit the 0 to 1 range.'''
-        # img_hls=cv2.cvtColor(warp, cv2.COLOR_BGR2HLS)
-        img_hls=cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
+        img_hls=cv2.cvtColor(warp, cv2.COLOR_BGR2HLS)
+        # img_hls=cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
+        # img_hls=cv2.cvtColor(crop_bottom, cv2.COLOR_BGR2HLS)
         
         '''Create masks for yellow and white lane markings'''
         yellowLow = np.array([15, 100, 20])
@@ -216,11 +211,59 @@ while (vid.isOpened()):
         
         '''Histogram of Intensities'''
         #Lane_l is left lane values, lane_r is right lane values
+        # lane_l,lane_r,ind,vals, b = histogram(comb_hls)
         lane_l,lane_r = histogram(comb_hls)
         
         
         '''Find white pixels in max and neighboring histogram columns'''
+        try:
+            leftpts = np.where(comb_hls[:,lane_l-10:lane_l+11] > 0)
+            rightpts = np.where(comb_hls[:,lane_r-10:lane_r+11] > 0)
+            
+            #calculating the coefficients of the polynomials of left and right lanes
+            coeff_left = np.polyfit(leftpts[0], leftpts[1]+(lane_l-10), 2)
+            coeff_right = np.polyfit(rightpts[0], rightpts[1]+(lane_r-10), 2)
+        except:
+            continue
         
+        poly_points, left_pts, right_pts = solvePolygon(coeff_left, coeff_right)
+        
+        '''Plotting the polygon on image'''
+        # cv2.fillPoly(crop_bottom, [poly_points], (50, 205, 50))
+        # cv2.fillPoly(crop_bottom, [poly_points], (100, 120, 50))    #green
+        cv2.fillPoly(warp, [poly_points], (100, 120, 50))    #green
+        
+        
+        '''Lane Mask'''
+        shape0=crop_bottom.shape[0]
+        shape1=crop_bottom.shape[1]
+        
+        img_unwarp=unwarpImage(warp, shape0,shape1)
+        
+        #thresholding the unwarped grayscale image
+        newwarp_gray = cv2.cvtColor(img_unwarp, cv2.COLOR_BGR2GRAY)
+        
+        _, un_thresh = cv2.threshold(newwarp_gray, 0, 250, cv2.THRESH_BINARY_INV)
+        
+        #extracting only the road from the unwarped image to use as a mask 
+        mask_inv = cv2.bitwise_and(crop_bottom, crop_bottom, mask = un_thresh).astype(np.uint8)
+        
+        #adding the resultant mask with the unwarped image
+        result_half = cv2.add(mask_inv, img_unwarp)
+        
+        '''Re-stitch upper and lower halfs of images/frames'''
+        recombine = np.concatenate((crop_top,result_half), axis = 0)
+        
+        img_final=recombine.copy()
+        
+        '''Predict Direction'''
+        # curveRadius=solveRadiusOfCurve(coeff_left,coeff_right, left_pts, right_pts)
+        curveRadius = ((1+((2*coeff_right[0]*right_pts[50][1])+coeff_right[1])**2)**(3/2))/abs(2*coeff_right[0])
+        
+        img_center=int(warp.shape[1]/2)
+        
+        #Add Text to frame indicating curvature/turn
+        addCurveDirectionText(img_center, lane_l, lane_r, img_final, curveRadius)
         
         if count==2:
             print("Frame 2, Making images for report...")
@@ -228,11 +271,29 @@ while (vid.isOpened()):
             plt.imshow(blur)
             plt.savefig("prob3_medianBlur.png")
             
-            # plt.imshow(recombine)
-            # plt.savefig("prob3_test.png")
+            plt.imshow(yellow_hls)
+            plt.savefig("prob3_HSV yellow.png")
+            plt.imshow(white_hls)
+            plt.savefig("prob3_HSV white.png")
+            plt.imshow(comb_hls)
+            plt.savefig("prob3_HSV combined.png")
+            
+            plt.imshow(warp)
+            plt.savefig("prob3_warped.png")
+            
+            plt.imshow(img_unwarp)
+            plt.savefig("prob3_unwarped.png")
+            
+
+            plt.imshow(recombine)
+            plt.savefig("prob3_polyLines.png")
+            
+            plt.imshow(img_final)
+            plt.savefig("prob3_final_result.png")
+            
             # plt.imshow(edges)
             # plt.savefig("edges.png")
-             # plt.imshow(img_crop)
+            # plt.imshow(img_crop)
             # plt.savefig("img_crop.png")
             # plt.imshow(image)
             # plt.savefig("img_colored.png")
@@ -240,12 +301,12 @@ while (vid.isOpened()):
             # plt.imshow(edges_color)
             # plt.savefig("img_edges_colored.png")
         
-        print("count is ", count)
-        # count+=1
+        # print("count is ", count)
     
     
         if problem_3 == True:
-                out3.write(frame)    
+                out3.write(img_final)
+                # out3.write(frame)
 
     else:
         break

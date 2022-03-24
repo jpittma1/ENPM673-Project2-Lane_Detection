@@ -315,9 +315,29 @@ def createLUT(histogram, min_value, max_value, pixels):
 
 
 '''Problem 3 Functions'''
-#  def solveHomographyAndWarp(img):
+def solveHomographyAndWarp(img):
+    source = np.array([[560, 50], [145, 220],[1180, 220], [725, 50]])#main
+
+    dest = np.array([[0, 0], [0, 500], [200, 500],[200, 0]])
+
+    H , status = cv2.findHomography(source, dest)
+
+    new_img = cv2.warpPerspective(img, H, (200,500))
+
+    return new_img
+
+#Uses inverse homography to unwarp
+def unwarpImage(img, s0, s1):
+    
+    source = np.array([[560, 50], [145, 220],[1180, 220], [725, 50]])#main
      
-#      return new_img
+    dest = np.array([[0, 0], [0, 500], [200, 500],[200, 0]])
+    
+    H , status = cv2.findHomography(source, dest)
+
+    new_img = cv2.warpPerspective(img, np.linalg.inv(H), (s1,s0))
+    
+    return new_img
  
 ###--Solves for histogram and max of each column/lane---###
 def histogram(img):
@@ -337,7 +357,51 @@ def histogram(img):
     col1 = hist_vals.index(max1)
     col2 = hist_vals.index(max2)
 
-    bins=200
-    plt.plot(index,hist_vals, bins)
-    plt.show()
+    # bins=200
+    # plt.plot(index,hist_vals, bins)
+    # plt.show()
+    # plt.savefig("prob3_histogram.png")
     return col1, col2
+    # return col1, col2, index, hist_vals, bins
+
+def solvePolygon(left, right):
+    x = np.arange(500)
+    x_sqr = np.square(x)
+    ones = np.ones(500)
+    
+    x_pts = np.stack((x_sqr,x,ones))
+    
+    #calculating y = dot product of the coefficients and x
+    points_left = np.dot(left,x_pts).astype(np.uint8)
+    points_right = np.dot(right,x_pts).astype(np.uint8)
+    
+    pnts_left = np.vstack((points_left,x)).T
+    pnts_right = np.vstack((points_right,x)).T
+    
+    #reversing the right lane y points in order to plot using polylines
+    pnts_right[:,0] = pnts_right[::-1,0]
+    pnts_right[:,1] = pnts_right[::-1,1]
+    
+    points = np.concatenate((pnts_left,pnts_right), axis = 0)
+    
+    return points, pnts_left, pnts_right
+
+
+def addCurveDirectionText(center, left, right, img, curve):
+    # def direction(img_center,left_max,right_max,res_img,radius_dir):
+        
+    l_center = left + (right - left)/2
+    dev = l_center - center
+    
+    #Straight
+    if ( -14 < dev < -9.5):
+        img = cv2.putText(img,'Straight',(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
+        img = cv2.putText(img,"ROC {}".format(curve),(50,80),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
+    #Right
+    elif ( -9.5 < dev < -3):
+        img = cv2.putText(img,'Right',(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
+        img = cv2.putText(img,"ROC {}".format(curve),(50,80),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
+    #Left
+    else:#( 6 < dev )
+        img = cv2.putText(img,'Left',(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
+        img = cv2.putText(img,"ROC {}".format(curve),(50,80),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,255),2,cv2.LINE_AA)
